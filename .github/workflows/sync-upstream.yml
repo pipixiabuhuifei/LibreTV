@@ -1,0 +1,38 @@
+name: Sync Upstream Code Only
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream
+        run: |
+          git remote add upstream https://github.com/LibreSpark/LibreTV.git || echo "Upstream exists"
+          git fetch upstream
+
+      - name: Set Git identity
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+
+      - name: Merge upstream excluding workflows
+        run: |
+          git checkout main
+          git checkout upstream/main -- $(git ls-tree -r upstream/main --name-only | grep -v '^.github/workflows/')
+          git add .
+          git diff-index --quiet HEAD || git commit -m "🔄 Sync code from upstream"
+
+      - name: Push changes
+        run: git push origin main
